@@ -1,0 +1,133 @@
+<?php
+// $Id$
+
+//------------------------------------------------------------------------------
+// Installation / removal
+//------------------------------------------------------------------------------
+
+/**
+ * Implementation of hook_install().
+ * 
+ * @see http://api.drupal.org/api/function/hook_install/6
+ */
+function uc_bulk_discount_install( ) {
+
+  drupal_install_schema( 'uc_bulk_discount' );
+}
+
+//------------------------------------------------------------------------------
+
+/**
+ * Implementation of hook_uninstall().
+ * 
+ * @see http://api.drupal.org/api/function/hook_uninstall/6
+ */
+function uc_bulk_discount_uninstall( ) {
+
+  drupal_uninstall_schema( 'uc_bulk_discount' );
+  
+  // Delete individual price settings. ( if there are any )
+  $result = db_query( 
+    "SELECT name FROM {variable} WHERE name LIKE 'uc_bulk_discount_%'" );
+  
+  while ( $row = db_fetch_object( $result ) ) {
+    variable_del( $row->name );
+  }
+}
+
+//------------------------------------------------------------------------------
+// Database
+//------------------------------------------------------------------------------
+
+/**
+ * Implementation of hook_schema().
+ * 
+ * @see http://api.drupal.org/api/function/hook_schema/6
+ */
+function uc_bulk_discount_schema( ) {
+
+  $schema[ 'uc_bulk_discounts' ] = array( 
+      
+      'description' => t( 
+        'List of special discount rules for products.' ), 
+      
+      'fields' => array( 
+          'pdid' => array( 
+              'description' => t( 
+                'The discount rule id.' ), 
+              'type' => 'serial', 
+              'unsigned' => TRUE, 
+              'not null' => TRUE 
+          ), 
+          'nid' => array( 
+              'description' => t( 
+                'The product id that this discount rule applies to.' ), 
+              'type' => 'int', 
+              'unsigned' => TRUE, 
+              'not null' => TRUE 
+          ), 
+          'type' => array( 
+              'description' => t( 
+                'The type of the individual discount rule.' ), 
+              'type' => 'varchar', 
+              'length' => 50, 
+              'not null' => TRUE, 
+              'default' => '' 
+          ), 
+          'xid' => array( 
+              'description' => t( 
+                'The id of the type used for this discount rule.' ), 
+              'type' => 'int', 
+              'unsigned' => TRUE, 
+              'not null' => TRUE 
+          ),
+          'low_qty' => array( 
+              'description' => t( 
+                'The lowest quantity applicable for this discount rule.' ), 
+              'type' => 'int', 
+              'unsigned' => TRUE, 
+              'not null' => TRUE 
+          ), 
+          'high_qty' => array( 
+              'description' => t( 
+                'The highest quantity applicable for this discount rule.' ), 
+              'type' => 'int', 
+              'unsigned' => TRUE, 
+              'not null' => TRUE 
+          ),  
+          'discount' => array( 
+              'description' => t( 
+                'The percentage discount the customer receives for the product.' ), 
+              'type' => 'float', 
+              'unsigned' => TRUE, 
+              'not null' => TRUE, 
+              'default' => '0' 
+          ) 
+      ), 
+      
+      'indexes' => array( 
+          'uc_bulk_discount_nid' => array( 
+              'nid' 
+          ), 
+          'uc_bulk_discount_type' => array( 
+              'nid',
+          		'type', 
+              'xid' 
+          ) 
+      ), 
+      
+      'primary key' => array( 
+          'pdid' 
+      ) 
+  );
+  
+  return $schema;
+}
+
+//------------------------------------------------------------------------------
+// Updates
+//------------------------------------------------------------------------------
+
+
+
+//------------------------------------------------------------------------------

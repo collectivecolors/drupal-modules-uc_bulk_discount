@@ -6,8 +6,8 @@
  * ------------------------------------
  *  
  * This module provides users with the 'manage discounts' role the ability to 
- * specify quantity discounts ( actual or percentage offset from product sell 
- * price ) for specific users and all users of specified roles on products.
+ * specify quantity discounts ( percentage ) for specific users and all users 
+ * of specified roles on products.
  * 
  * > When a site visitor logs in, special discounts goes into effect.
  * 

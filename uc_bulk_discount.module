@@ -1,0 +1,158 @@
+<?php
+// $Id$
+
+/**
+ * uc_bulk_discount.module
+ * ------------------------------------
+ *  
+ * This module provides users with the 'manage discounts' role the ability to 
+ * specify quantity discounts ( actual or percentage offset from product sell 
+ * price ) for specific users and all users of specified roles on products.
+ * 
+ * > When a site visitor logs in, special discounts goes into effect.
+ * 
+ * > Discounts are specified with quantity tiers.
+ * 
+ * > User discounts override role discounts.
+ * 
+ * > If user has multiple roles with special discounts, then the greatest 
+ *   discount is used.
+ * 
+ * > Display discount tiers for this user on the product page.
+ *   Got to encourage those sales :-)
+ * 
+ * > Discounts apply to all product types ( attribute combinations ).
+ * 
+ */
+
+//------------------------------------------------------------------------------
+// Constants
+//------------------------------------------------------------------------------
+
+/**
+ * Module permissions.
+ */
+define( 'UCBD_PERM_MANAGE_DISCOUNTS', 'manage discounts' );
+
+/**
+ * Pricing rule types.
+ */
+define( 'UCBD_TYPE_USER', 'user' );
+define( 'UCBD_TYPE_ROLE', 'role' );
+
+//------------------------------------------------------------------------------
+// Drupal hooks
+//------------------------------------------------------------------------------
+
+/**
+ * Implementation of hook_perm().
+ *
+ * @see http://api.drupal.org/api/function/hook_perm/6
+ */
+function uc_bulk_discount_perm( ) {
+
+  return array ( 
+    UCBD_PERM_MANAGE_DISCOUNTS 
+  );
+}
+
+//------------------------------------------------------------------------------
+
+/**
+ * Implementation of hook_menu().
+ * 
+ * Implemented pages:
+ * 
+ * 	node/{nid}/edit/discounts/add            ( local task )
+ *  node/{nid}/edit/discounts/edit/{pdid}    ( local task )
+ *  node/{nid}/edit/discounts/delete/{pdid}  ( local task )
+ * 
+ *  where {nid} is a product node.
+ * 
+ * @see http://api.drupal.org/api/function/hook_menu/6
+ */
+function uc_bulk_discount_menu( ) {
+  $items = array();
+    
+  $items['node/%node/edit/discounts'] = array(
+    'title' => 'Discounts',
+  	'page callback' => 'uc_bulk_discount_list_discounts',
+    'page arguments' => array(1),
+    'access callback' => 'uc_bulk_discount_admin_access',
+    'access arguments' => array(1),
+    'weight' => -6,
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'uc_bulk_discount.admin.inc',
+  );
+    
+  $items['node/%node/edit/discounts/add'] = array(
+    'title' => 'Add product discount rule',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_bulk_discount_add_discount_form', 1),
+    'access callback' => 'uc_bulk_discount_admin_access',
+    'access arguments' => array(1),
+    'weight' => -8,
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'uc_bulk_discount.admin.inc',
+  );
+  
+  $items['node/%node/edit/discounts/edit/%discount_rule'] = array(
+    'title' => 'Edit product discount rule',
+    'page callback' => 'drupal_get_form', 
+    'page arguments' => array('uc_bulk_discount_edit_discount_form', 1, 5),
+    'access callback' => 'uc_bulk_discount_admin_access',
+    'access arguments' => array(1),
+    'weight' => -6,
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'uc_bulk_discount.admin.inc',
+  );
+    
+  $items['node/%node/edit/discounts/delete/%discount_rule'] = array(
+    'title' => 'Delete product discount rule',
+    'page callback' => 'drupal_get_form', 
+    'page arguments' => array('uc_bulk_discount_delete_discount_form', 1, 5),
+    'access callback' => 'uc_bulk_discount_admin_access',
+    'access arguments' => array(1),
+    'weight' => -4,
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'uc_bulk_discount.admin.inc',
+  );
+  
+  return $items;
+}
+
+//------------------------------------------------------------------------------
+
+/**
+ * Implementation of hook_theme().
+ *
+ * @see http://api.drupal.org/api/function/hook_theme/6
+ */
+function uc_bulk_discount_theme( ) {  
+  return array(
+    'uc_bulk_discount_rule_listing' => array(
+      'arguments' => array( 'node' => NULL, 'discount_rules' => NULL ),
+      'file'      => 'uc_bulk_discount.admin.inc',
+    ),  
+  );  
+}
+
+//------------------------------------------------------------------------------
+// Menu access handlers
+//------------------------------------------------------------------------------
+
+function uc_bulk_discount_admin_access( $node ) {
+  if ( uc_product_is_product( $node ) && user_access( UCBD_PERM_MANAGE_DISCOUNTS ) ) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+//------------------------------------------------------------------------------
+// Internal utilities
+//------------------------------------------------------------------------------
+
+function discount_rule_load( $pdid ) {
+  module_load_include( 'inc', 'uc_bulk_discount', 'uc_bulk_discount.api' );
+  return uc_bulk_discount_select_rules( array( 'pdid' => $pdid ) );  
+}

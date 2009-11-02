@@ -98,10 +98,11 @@ function uc_bulk_discount_schema( ) {
           'discount' => array( 
               'description' => t( 
                 'The percentage discount the customer receives for the product.' ), 
-              'type' => 'float', 
-              'unsigned' => TRUE, 
-              'not null' => TRUE, 
-              'default' => '0' 
+              'type' => 'numeric', 
+              'precision' => 16,
+        			'scale' => 5,
+        			'not null' => TRUE,
+        			'default' => 0.0,
           ) 
       ), 
       

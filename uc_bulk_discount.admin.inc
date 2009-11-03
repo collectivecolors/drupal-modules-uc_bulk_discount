@@ -5,7 +5,7 @@
 // Menu callbacks
 //------------------------------------------------------------------------------
 
-function uc_bulk_discount_list_prices( $node ) {
+function uc_bulk_discount_list_discounts( $node ) {
   module_load_include( 'inc', 'uc_bulk_discount', 'uc_bulk_discount.api' );
               
   $discount_rules = uc_bulk_discount_select_rules( 

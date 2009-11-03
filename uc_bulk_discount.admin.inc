@@ -16,14 +16,14 @@ function uc_bulk_discount_list_discounts( $node ) {
 
 //------------------------------------------------------------------------------
 
-function uc_bulk_discount_add_price_form( $form_state, $node ) {
+function uc_bulk_discount_add_discount_form( $form_state, $node ) {
   module_load_include( 'inc', 'uc_bulk_discount', 'uc_bulk_discount.api' );  
   return uc_bulk_discount_rule_form( $node, NULL );
 }
 
 //------------------------------------------------------------------------------
 
-function uc_bulk_discount_edit_price_form( $form_state, $node, $discount_rule ) {
+function uc_bulk_discount_edit_discount_form( $form_state, $node, $discount_rule ) {
   module_load_include( 'inc', 'uc_bulk_discount', 'uc_bulk_discount.api' );  
   return uc_bulk_discount_rule_form( $node, $discount_rule );
 }
@@ -31,7 +31,7 @@ function uc_bulk_discount_edit_price_form( $form_state, $node, $discount_rule ) 
 
 //------------------------------------------------------------------------------
 
-function uc_bulk_discount_delete_price_form( $form_state, $node, $discount_rule ) {
+function uc_bulk_discount_delete_discount_form( $form_state, $node, $discount_rule ) {
   module_load_include( 'inc', 'uc_bulk_discount', 'uc_bulk_discount.api' );
   
   $form[ 'nid' ] = array( 

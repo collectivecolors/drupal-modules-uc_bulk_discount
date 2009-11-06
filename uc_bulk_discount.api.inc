@@ -186,7 +186,7 @@ function _uc_bulk_discount_sort_rules( $rule1, $rule2 ) {
   if ( $rule1[ 'low_qty' ] != $rule2[ 'low_qty' ] ) {
   	return ( $rule1[ 'low_qty' ] < $rule2[ 'low_qty' ] ? -1 : 1 );
   }
-  // They are the same.
+  // They are practically the same.
   return 0;
 }
 

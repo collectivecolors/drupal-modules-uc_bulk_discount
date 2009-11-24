@@ -176,7 +176,7 @@ function _uc_bulk_discount_sort_rules( $rule1, $rule2 ) {
   }  
   // Then sort by type.
   if ( $rule1[ 'type' ] != $rule2[ 'type' ] ) {
-    return ( $rule1[ 'type' ] == UCMP_TYPE_ROLE ? -1 : 1 );
+    return ( $rule1[ 'type' ] == UCBD_TYPE_ROLE ? -1 : 1 );
   }
   // Then sort by xid.
   if ( $rule1[ 'xid' ] != $rule2[ 'xid' ] ) {

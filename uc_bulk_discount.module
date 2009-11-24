@@ -133,8 +133,119 @@ function uc_bulk_discount_theme( ) {
     'uc_bulk_discount_rule_listing' => array(
       'arguments' => array( 'node' => NULL, 'discount_rules' => NULL ),
       'file'      => 'uc_bulk_discount.admin.inc',
-    ),  
+    ),
+    'uc_bulk_discount_product_discounts' => array(
+      'arguments' => array( 'form' => NULL ),
+    )  
   );  
+}
+
+//------------------------------------------------------------------------------
+
+/**
+ * Implementation of hook_nodeapi(). 
+ *
+ * @see http://api.drupal.org/api/function/hook_nodeapi/6
+ */
+function uc_bulk_discount_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  
+  switch ($op) {
+    case 'delete':
+      // Clear all existing product rules when a node is deleted.
+      module_load_include( 'inc', 'uc_bulk_discount', 'uc_bulk_discount.api' );
+      
+      $discount_rules = uc_bulk_discount_select_rules(
+        array(
+        	'nid' => $node->nid,
+        ),
+        TRUE
+      );
+      
+      foreach ($discount_rules as $rule) {
+        uc_bulk_discount_remove_rule($rule);
+      }      
+      break;    
+  }  
+}
+
+//------------------------------------------------------------------------------
+
+/**
+ * Implementation of hook_user(). 
+ *
+ * @see http://api.drupal.org/api/function/hook_user/6
+ */
+function uc_bulk_discount_user($op, &$edit, &$account, $category = NULL) {
+  
+  switch ($op) {
+    case 'delete':
+      // Clear all user rules when the corresponding user is deleted.
+      module_load_include( 'inc', 'uc_bulk_discount', 'uc_bulk_discount.api' );
+      
+      $discount_rules = uc_bulk_discount_select_rules(
+        array(
+          'type' => UCBD_TYPE_USER,
+        	'xid'  => $account->uid,
+        ),
+        TRUE
+      );
+      
+      foreach ($discount_rules as $rule) {
+        uc_bulk_discount_remove_rule($rule);
+      }      
+      break;     
+  }
+}
+
+//------------------------------------------------------------------------------
+
+/**
+ * Implementation of hook_form_alter(). 
+ *
+ * @see http://api.drupal.org/api/function/hook_form_alter/6
+ */
+function uc_bulk_discount_form_alter(&$form, $form_state, $form_id) {
+	
+	if ($form_id == 'user_admin_role') {
+	  // Delete relevant rules when role is deleted.
+		$form['#submit'][] = 'uc_bulk_discount_user_admin_role_submit';		
+	}
+	elseif (variable_get('uc_bulk_discount_show_discounts', TRUE)
+	        && preg_match('/^uc_product_add_to_cart_form(_\d+)?/', $form_id)) {
+	  
+	  module_load_include('inc', 'uc_bulk_discount', 'uc_bulk_discount.api');
+	  
+	  // Append discount information to cart form.
+	  $form['discounts'] = array(
+	    '#type'  => 'markup',
+	    '#value' => theme('uc_bulk_discount_product_discounts', $form['nid']),
+	    '#weight' => 10,
+	  );
+	  $form['submit']['#weight'] = 15;
+	}
+}
+
+//------------------------------------------------------------------------------
+// Ubercart hooks
+//------------------------------------------------------------------------------
+
+/**
+ * Implementation of hook_line_item().
+ */
+function uc_bulk_discount_line_item() {
+  
+	$items[] = array(
+    'id' => 'uc_bulk_discount',
+    'title' => t('Group upgrade discount'),
+    'callback' => 'uc_bulk_discount_line_item_discount',
+    'weight' => 5,
+    'stored' => TRUE,
+    'default' => FALSE,
+    'calculated' => TRUE,
+    'display_only' => FALSE,
+  );
+
+  return $items;
 }
 
 //------------------------------------------------------------------------------
@@ -149,6 +260,104 @@ function uc_bulk_discount_admin_access( $node ) {
 }
 
 //------------------------------------------------------------------------------
+// Form handlers
+//------------------------------------------------------------------------------
+
+function uc_bulk_discount_user_admin_role_submit($form, &$form_state) {
+
+	if ($form_state['values']['op'] == t('Delete role')) {
+		// Clear all role based rules when the corresponding role is deleted.
+    module_load_include('inc', 'uc_bulk_discount', 'uc_bulk_discount.api');
+      
+    $discount_rules = uc_bulk_discount_select_rules(
+      array(
+        'type' => UCBD_TYPE_ROLE,
+      	'xid'  => $form_state['values']['rid'],
+      ),
+      TRUE
+    );
+      
+    foreach ($discount_rules as $rule) {
+      uc_bulk_discount_remove_rule($rule);
+    }
+	}
+}
+
+//------------------------------------------------------------------------------
+// Line item handlers
+//------------------------------------------------------------------------------
+
+/**
+ * Handle the discount line item.
+ */
+function uc_bulk_discount_line_item_discount($op, $arg1) {
+  module_load_include( 'inc', 'uc_bulk_discount', 'uc_bulk_discount.api' );
+	
+	switch ($op) {
+  	case 'cart-preview':
+  		$discounts = uc_bulk_discount_get_discounts($arg1);
+  		
+  		if (count($discounts)) {
+  			$js = 'if (Drupal.jsEnabled) { $(document).ready(function() { '
+        	   . ' if (window.set_line_item) { ';
+  			
+        foreach ($discounts as $discount) {
+        	$js .= "set_line_item('uc_bulk_discount', '". $discount->name ."', ". $discount->amount .", ". variable_get('uc_bulk_discount_discount_weight', 5) ."); ";
+      	}
+  			
+      	$js .= '} }) };';
+  		
+  			drupal_add_js($js, 'inline');
+  		}
+      break;
+      
+    case 'load':
+      $lines = array();
+      	
+      foreach (uc_bulk_discount_get_discounts($arg1->products) as $discount) {
+       	$lines[] = array(
+         	'id'     => 'uc_bulk_discount',
+         	'title'  => $discount->name,
+         	'amount' => $discount->amount,
+         	'weight' => variable_get('uc_bulk_discount_discount_weight', 5),
+         	'data'   => $discount->data,
+       	);
+      }
+      return $lines;
+  }
+}
+
+//------------------------------------------------------------------------------
+// Theme functions
+//------------------------------------------------------------------------------
+
+function theme_uc_bulk_discount_product_discounts($product_nid) {
+  								
+  $discount_tiers = uc_bulk_discount_get_discount_tiers($product_nid);
+  
+  $header = array(t('Low quantity'), t('High quantity'), t('Discount'));
+  $rows   = array();
+  
+  foreach ($discount_tiers as $tier) {
+    
+    $row = array(
+      $tier['low_qty'],
+      $tier['high_qty'],
+      sprintf( '%.2f', $tier['discount']) . '% off'
+    );
+        
+    $rows[] = $row;    
+  }  
+  if (count($rows)) {
+    return '<div class="discount-table">'
+  	  . '<div class="table-message">' . t('Get a discount when you purchase more of this product.') . '</div>' 
+      . theme('table', $header, $rows)
+      . '</div>';
+  }
+  return '';
+}
+
+//------------------------------------------------------------------------------
 // Internal utilities
 //------------------------------------------------------------------------------
 
@@ -156,3 +365,172 @@ function discount_rule_load( $pdid ) {
   module_load_include( 'inc', 'uc_bulk_discount', 'uc_bulk_discount.api' );
   return uc_bulk_discount_select_rules( array( 'pdid' => $pdid ) );  
 }
+
+//------------------------------------------------------------------------------
+
+function uc_bulk_discount_get_discounts($products) {
+	
+  $discounts    = array();
+  $product_data = array();
+			
+	foreach ($products as $product) {
+	  
+	  $price = ($product->price * $product->qty);
+	  
+	  if (!array_key_exists($product->nid, $product_data)) {
+	    $product_data[$product->nid] = array(
+	      'nid'   => $product->nid,
+	    	'title' => $product->title,
+	      'qty'   => $product->qty,
+	      'price' => $price,
+	    );
+	  }
+	  else {
+	    $product_data[$product->nid]['qty'] += $product->qty;
+	    $product_data[$product->nid]['price'] += $price;  
+	  }	  
+	}
+	
+	foreach ($product_data as $nid => $data) {
+		$amount = _uc_bulk_discount_get_discount_amount($data);
+			
+		if ($amount) {
+			$discount = new stdClass();
+			
+			$discount->name   = t('!title quantity discount', array('!title' => $data['title']));
+			$discount->amount = $amount;
+			$discount->data   = array();		
+			
+			$discounts[] = $discount;
+		}
+	}
+	
+	return $discounts;	
+}
+
+//------------------------------------------------------------------------------
+
+function _uc_bulk_discount_get_discount_amount($product_data) {
+    
+  $amount = 0;
+    
+  $discount_map = uc_bulk_discount_map_discounts($product_data['nid']);
+  $product_qty  = $product_data['qty'];
+  
+  if (array_key_exists($product_qty, $discount_map)) {
+    $amount = uc_bulk_discount_calculate_discount($product_data['price'], $discount_map[$product_qty]);  
+  }
+  return min($amount, 0);
+}
+
+//------------------------------------------------------------------------------
+
+function uc_bulk_discount_map_discounts($product_nid, $account = NULL) {
+    
+  $rules = uc_bulk_discount_applicable_rules($product_nid, $account);
+  $map   = array();  
+  
+  // Higher discount role rules override lower discount rules.
+  foreach ($rules['role'] as $rule) {
+  	for ($qty = $rule['low_qty']; $qty <= $rule['high_qty']; $qty++) {
+  	  if (!$map[$qty] || $rule['discount'] > $map[$qty]) {
+  	    $map[$qty] = $rule['discount'];
+  	  }
+  	}
+  }
+  // User rules override all role rules, even if they are lower discount.
+  foreach ($rules['user'] as $rule) {
+    for ($qty = $rule['low_qty']; $qty <= $rule['high_qty']; $qty++) {
+  	  $map[$qty] = $rule['discount'];
+  	}	 
+  }
+  return $map;
+}
+
+//------------------------------------------------------------------------------
+
+function uc_bulk_discount_applicable_rules($nid, $account = NULL) {
+	global $user;
+	
+	if (is_null($account)) {
+		$account = $user;
+	}
+	
+	$rules = uc_bulk_discount_select_rules(array('nid' => $nid), TRUE);
+	
+	$user_rules = array( );
+	$role_rules = array( );
+	
+	$results = array();
+	
+  // Separate into type sections.
+  foreach ($rules as $rule) {
+    switch ($rule['type']) {
+      case UCBD_TYPE_USER:
+        $user_rules[$rule['xid']][] = $rule;
+        break;  
+          
+  	 	case UCBD_TYPE_ROLE:
+        $role_rules[$rule['xid']][] = $rule;
+        break;                   
+    }
+  }	      
+
+  // First see if there are any user rules available.
+  $results['user'] = array();
+  if (array_key_exists($account->uid, $user_rules)) {
+  	$results['user'] = $user_rules[$account->uid];
+  }
+  
+  // Check for role based rules.
+  $results['role'] = array();  
+  foreach ($account->roles as $rid => $name) {
+  	if (array_key_exists($rid, $role_rules)) {
+  	  $results['role'] = array_merge($results['role'], $role_rules[$rid]);  
+  	}
+  }  
+  return $results;
+}
+
+//------------------------------------------------------------------------------
+
+function uc_bulk_discount_get_discount_tiers($product_nid, $account = NULL) {
+  
+  $discount_map = uc_bulk_discount_map_discounts($product_nid, $account);
+  $tiers        = array();
+  
+  $tier = NULL;
+  foreach ($discount_map as $qty => $discount) {
+    
+    if (is_null($tier)
+        || ($qty > ($tier['high_qty'] + 1)) 
+        || ($discount != $tier['discount'])) {
+          
+      if (!is_null($tier)) {
+        $tiers[] = $tier;
+      }      
+      // Start new tier.
+      $tier = array(
+        'low_qty' => $qty,
+        'high_qty' => $qty,
+        'discount' => $discount,
+      );
+    }
+    else {
+      // Continue old tier.
+      $tier['high_qty'] = $qty;
+    }
+  }
+  if (!is_null($tier)) {
+    $tiers[] = $tier;  
+  }
+  return $tiers;
+}
+
+//------------------------------------------------------------------------------
+
+function uc_bulk_discount_calculate_discount($price, $discount_amount) {
+  return (-1 * ($price * ($discount_amount / 100)));
+}
+
+//------------------------------------------------------------------------------

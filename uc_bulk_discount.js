@@ -1,3 +1,4 @@
+// $Id: uc_bulk_discount.js,v 1.2 2009/11/30 18:25:07 awebb Exp $
 
 Drupal.behaviors.uc_bulk_discount_rule_edit_toggle = function( context ) {
 	

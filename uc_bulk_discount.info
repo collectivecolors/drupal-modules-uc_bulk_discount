@@ -1,4 +1,4 @@
-; $Id$
+; $Id: uc_bulk_discount.info,v 1.2 2009/11/30 18:25:07 awebb Exp $
 name = UC Bulk Discount
 description = Specify quantity discounts for products to site users based upon user name or role.
 dependencies[] = uc_product
@@ -6,5 +6,9 @@ dependencies[] = uc_cart
 package = "Ubercart - extra"
 core = 6.x
 php = 5.0
+; Information added by drupal.org packaging script on 2009-11-30
+version = "6.x-1.0-beta1"
+core = "6.x"
+project = "uc_bulk_discount"
+datestamp = "1259605901"
 
-version = "6.x-1.0"

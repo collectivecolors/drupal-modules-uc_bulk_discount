@@ -1,0 +1,18 @@
+// $Id$
+ 
+********************************************************************************
+********************************************************************************
+ 
+ --------
+|  TODO  |
+ --------
+ 
+1. All administrators to specify global product discounts.  Since all discounts 
+are percentage based and total order quantity is easy to measure, this should 
+not be a problem.  Would the global rules override the product rules or vide 
+versa?
+
+2. This module shares a lot of administrative interface code with the 
+uc_member_pricing module to make the interfaces consistent for the client.
+Maybe abstract the administrative functionality into a general purpose module
+that these two modules require?

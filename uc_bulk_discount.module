@@ -218,7 +218,7 @@ function uc_bulk_discount_form_alter(&$form, $form_state, $form_id) {
 	  // Append discount information to cart form.
 	  $form['discounts'] = array(
 	    '#type'  => 'markup',
-	    '#value' => theme('uc_bulk_discount_product_discounts', $form['nid']),
+	    '#value' => theme('uc_bulk_discount_product_discounts', $form['nid']['#value']),
 	    '#weight' => 10,
 	  );
 	  $form['submit']['#weight'] = 15;
